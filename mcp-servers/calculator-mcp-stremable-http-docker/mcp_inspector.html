@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Inspector - Calculator Server</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        .tool {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .tool h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .tool p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input {
+            width: 100px;
+            margin-right: 10px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧮 MCP Inspector - Calculator Server</h1>
+        
+        <div id="status" class="status disconnected">
+            🔴 Disconnected from server
+        </div>
+
+        <div class="section">
+            <h3>📡 Server Connection</h3>
+            <p>Server URL: <code>http://localhost:8000/mcp</code></p>
+            <button onclick="testConnection()">Test Connection</button>
+            <button onclick="listTools()">List Tools</button>
+        </div>
+
+        <div class="section">
+            <h3>🔧 Available Tools</h3>
+            <div id="tools"></div>
+        </div>
+
+        <div class="section">
+            <h3>🧮 Calculator Tools</h3>
+            
+            <div class="tool">
+                <h4>Add</h4>
+                <p>Add two numbers together</p>
+                <div class="form-group">
+                    <label>a: <input type="number" id="add-a" value="10" step="any"></label>
+                    <label>b: <input type="number" id="add-b" value="5" step="any"></label>
+                    <button onclick="callTool('add')">Calculate</button>
+                </div>
+                <div id="add-result" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="tool">
+                <h4>Subtract</h4>
+                <p>Subtract two numbers</p>
+                <div class="form-group">
+                    <label>a: <input type="number" id="subtract-a" value="20" step="any"></label>
+                    <label>b: <input type="number" id="subtract-b" value="8" step="any"></label>
+                    <button onclick="callTool('subtract')">Calculate</button>
+                </div>
+                <div id="subtract-result" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="tool">
+                <h4>Multiply</h4>
+                <p>Multiply two numbers</p>
+                <div class="form-group">
+                    <label>a: <input type="number" id="multiply-a" value="4" step="any"></label>
+                    <label>b: <input type="number" id="multiply-b" value="7" step="any"></label>
+                    <button onclick="callTool('multiply')">Calculate</button>
+                </div>
+                <div id="multiply-result" class="result" style="display: none;"></div>
+            </div>
+
+            <div class="tool">
+                <h4>Divide</h4>
+                <p>Divide two numbers</p>
+                <div class="form-group">
+                    <label>a: <input type="number" id="divide-a" value="100" step="any"></label>
+                    <label>b: <input type="number" id="divide-b" value="4" step="any"></label>
+                    <button onclick="callTool('divide')">Calculate</button>
+                </div>
+                <div id="divide-result" class="result" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://localhost:8000/mcp';
+        let sessionId = null;
+
+        async function makeRequest(method, params = null) {
+            const request = {
+                jsonrpc: "2.0",
+                id: Date.now(),
+                method: method
+            };
+            
+            if (params) {
+                request.params = params;
+            }
+
+            try {
+                const response = await fetch(SERVER_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json, text/event-stream'
+                    },
+                    body: JSON.stringify(request)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                // Extract session ID from headers if available
+                const sessionHeader = response.headers.get('mcp-session-id');
+                if (sessionHeader && !sessionId) {
+                    sessionId = sessionHeader;
+                }
+
+                return data;
+            } catch (error) {
+                throw new Error(`Request failed: ${error.message}`);
+            }
+        }
+
+        async function testConnection() {
+            try {
+                const result = await makeRequest('tools/list');
+                updateStatus(true, '🟢 Connected to server');
+                return true;
+            } catch (error) {
+                updateStatus(false, `🔴 Connection failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function listTools() {
+            try {
+                const result = await makeRequest('tools/list');
+                displayTools(result.result?.tools || []);
+            } catch (error) {
+                showError('Failed to list tools: ' + error.message);
+            }
+        }
+
+        function displayTools(tools) {
+            const toolsDiv = document.getElementById('tools');
+            if (tools.length === 0) {
+                toolsDiv.innerHTML = '<p>No tools found</p>';
+                return;
+            }
+
+            toolsDiv.innerHTML = tools.map(tool => `
+                <div class="tool">
+                    <h4>${tool.name}</h4>
+                    <p>${tool.description || 'No description'}</p>
+                </div>
+            `).join('');
+        }
+
+        async function callTool(toolName) {
+            const a = parseFloat(document.getElementById(`${toolName}-a`).value);
+            const b = parseFloat(document.getElementById(`${toolName}-b`).value);
+            
+            if (isNaN(a) || isNaN(b)) {
+                showResult(toolName, 'Error: Please enter valid numbers', true);
+                return;
+            }
+
+            try {
+                const result = await makeRequest('tools/call', {
+                    name: toolName,
+                    arguments: { a, b }
+                });
+
+                if (result.error) {
+                    showResult(toolName, `Error: ${result.error.message}`, true);
+                } else {
+                    const output = result.result?.content?.[0]?.text || JSON.stringify(result.result);
+                    showResult(toolName, `Result: ${output}`, false);
+                }
+            } catch (error) {
+                showResult(toolName, `Request failed: ${error.message}`, true);
+            }
+        }
+
+        function showResult(toolName, message, isError) {
+            const resultDiv = document.getElementById(`${toolName}-result`);
+            resultDiv.textContent = message;
+            resultDiv.className = `result ${isError ? 'error' : 'success'}`;
+            resultDiv.style.display = 'block';
+        }
+
+        function showError(message) {
+            alert(message);
+        }
+
+        function updateStatus(connected, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${connected ? 'connected' : 'disconnected'}`;
+        }
+
+        // Auto-test connection on page load
+        window.onload = function() {
+            testConnection();
+        };
+    </script>
+</body>
+</html> 
